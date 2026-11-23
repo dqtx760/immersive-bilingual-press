@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 380" width="100%" role="img" aria-labelledby="hero-title hero-desc">
+  <title id="hero-title">沉浸式双语译林：划选英文，译文就地出现</title>
+  <desc id="hero-desc">左侧为项目名与一句话价值，右侧演示选中英文词句后点按译按钮，弹出可拖拽的流式译文卡片。</desc>
+
+  <rect width="1200" height="380" fill="#f5f6f8"/>
+
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">
+    <text x="60" y="122" font-size="46" font-weight="700" fill="#20252d">沉浸式双语译林</text>
+    <text x="60" y="160" font-size="20" fill="#596273">Immersive Bilingual Press · v2.1</text>
+    <text x="60" y="222" font-size="24" fill="#805132">网页上划选英文，译文就地出现。</text>
+    <text x="60" y="260" font-size="19" fill="#596273">Google 翻译与云端 API 自由切换 · 仅显示译文 / 双语对照 · 双主题 · 四语界面</text>
+
+    <g font-size="18" fill="#596273">
+      <rect x="60" y="292" width="126" height="36" rx="18" fill="#ffffff" stroke="#dce1e8"/>
+      <text x="123" y="315" text-anchor="middle">划词即译</text>
+      <rect x="198" y="292" width="126" height="36" rx="18" fill="#ffffff" stroke="#dce1e8"/>
+      <text x="261" y="315" text-anchor="middle">整页对照</text>
+      <rect x="336" y="292" width="126" height="36" rx="18" fill="#ffffff" stroke="#dce1e8"/>
+      <text x="399" y="315" text-anchor="middle">Alt 悬停快译</text>
+    </g>
+
+    <rect x="622" y="58" width="518" height="182" rx="14" fill="#ffffff" stroke="#dce1e8" stroke-width="1.5"/>
+    <text x="646" y="90" font-size="18" fill="#8a93a3">ENGLISH ARTICLE</text>
+    <text x="646" y="136" font-size="22" fill="#20252d">The </text>
+    <rect x="688" y="114" width="218" height="30" rx="5" fill="#fde68a"/>
+    <text x="698" y="136" font-size="22" fill="#20252d">quick brown fox</text>
+    <text x="918" y="136" font-size="22" fill="#20252d">jumps…</text>
+    <rect x="646" y="166" width="380" height="9" rx="4.5" fill="#e8ebf0"/>
+    <rect x="646" y="192" width="320" height="9" rx="4.5" fill="#e8ebf0"/>
+
+    <circle cx="1128" cy="130" r="24" fill="#805132"/>
+    <text x="1128" y="138" font-size="23" font-weight="700" fill="#ffffff" text-anchor="middle">译</text>
+
+    <path d="M 1128 158 L 1128 246" stroke="#805132" stroke-width="1.5" stroke-dasharray="4 5" fill="none"/>
+
+    <rect x="756" y="246" width="374" height="96" rx="12" fill="#ffffff" stroke="#805132" stroke-width="2"/>
+    <circle cx="790" cy="280" r="15" fill="#805132"/>
+    <text x="790" y="287" font-size="18" font-weight="700" fill="#ffffff" text-anchor="middle">译</text>
+    <text x="818" y="287" font-size="22" fill="#20252d">敏捷的棕色狐狸</text>
+    <text x="818" y="320" font-size="18" fill="#8a93a3">流式译文 · 可拖拽卡片</text>
+  </g>
+</svg>

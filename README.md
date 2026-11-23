@@ -2,6 +2,10 @@
 
 **简体中文** | **繁體中文** | **English** | **日本語**
 
+<p align="center">
+  <img src="./assets/readme/hero.svg" width="100%" alt="沉浸式双语译林：划选英文词句后点按译按钮，弹出可拖拽的流式译文卡片；另支持整页对照与 Alt 悬停快译">
+</p>
+
 ---
 
 ## 🇨🇳 简体中文说明
@@ -69,7 +73,7 @@
 
 ## 🇺🇸 English Documentation
 
-**Immersive Bilingual Press (`v2.1`)** is a zero-build Chrome / Edge Manifest V3 browser extension for full-page translation (side-by-side bilingual or translation-only), text selection popups, and `Alt`-hover paragraph translation. It supports **Google Translate** and **OpenAI-compatible Cloud APIs** (OpenAI / DeepSeek / Moonshot / OpenRouter / Groq / xAI / Qwen and more), with two visual themes: **Vintage Press (Retro Newspaper & Book)** and **Liquid Glass**.
+**Immersive Bilingual Press (`v2.1`)** is a zero-build Chrome / Edge Manifest V3 browser extension for full-page translation (side-by-side bilingual or translation-only), text selection popups, and `Alt`-hover paragraph translation. It supports **Google Translate** and **OpenAI-compatible Cloud APIs** (OpenAI / DeepSeek / Moonshot / OpenRouter / Groq / xAI / Qwen and more), with two visual themes: **Vintage Press (Retro Newspaper & Book)** and **Liquid Glass**. Selecting English text on a page opens a draggable translation card; the translate button does not appear for Chinese or other non-English selections.
 
 ### ✨ Key Features in v2.1
 
@@ -112,3 +116,21 @@ WeChat public account: search for “大强同学” in WeChat.
 更新情報：[Bilibili](https://space.bilibili.com/491358682/upload/video) · [YouTube](https://www.youtube.com/@dqtx760/videos) · [即刻](https://web.okjike.com/u/24236868-c3e9-49ef-ab93-93a60e1a25db) · [CSDN](https://blog.csdn.net/2402_82616859?type=blog)
 
 WeChat 公式アカウント：WeChat で「大强同学」を検索してください。
+
+---
+
+## 👨‍💻 关于我
+
+**大强同学（Derek Zhao）**
+AI 工具与工作流实践者 · GitHub 开源项目作者
+
+我在 Windows、AI Agent、Obsidian 和个人网站这些真实场景里，
+把能跑通的工具、Skill 和流程，整理成可复用的开源项目与交付方案。
+
+- 文章与工具：[dqtx.cc](https://www.dqtx.cc/) · [os.dqtx.cc](https://os.dqtx.cc/) · [blog.dqtx.cc](https://blog.dqtx.cc/)
+- 关注更新：[B 站](https://space.bilibili.com/491358682/upload/video) · [YouTube](https://www.youtube.com/@dqtx760/videos) · [即刻](https://web.okjike.com/u/24236868-c3e9-49ef-ab93-93a60e1a25db) · [CSDN](https://blog.csdn.net/2402_82616859?type=blog)
+- 公众号：微信搜索「大强同学」
+
+![](https://gitee.com/da-qiang-classmate/typora/raw/master/image/未命名的设计（2）.webp)
+
+卡在安装、配置、报错，或想把 AI 接进自己的工作流，可以直接找我。
