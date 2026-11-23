@@ -38,13 +38,6 @@
 6. 点击弹窗中的**「打开设置页」**，也可从浏览器扩展菜单的「选项」进入。普通偏好即时保存，云端 API 配置需点击保存按钮。
 7. 在设置页「交互与快捷键」查看实际整页翻译快捷键，并通过**「管理浏览器快捷键」**修改。默认建议为 `Alt + A`；若与其他扩展冲突，需在浏览器中分配可用组合。
 
-### 大强同学｜AI工具与自动化
-
-文章与工具：[dqtx.cc](https://www.dqtx.cc/) · [os.dqtx.cc](https://os.dqtx.cc/) · [blog.dqtx.cc](https://blog.dqtx.cc/)
-
-关注更新：[B 站](https://space.bilibili.com/491358682/upload/video) · [YouTube](https://www.youtube.com/@dqtx760/videos) · [即刻](https://web.okjike.com/u/24236868-c3e9-49ef-ab93-93a60e1a25db) · [CSDN](https://blog.csdn.net/2402_82616859?type=blog)
-
-公众号：微信搜索「大强同学」。
 
 ---
 
