@@ -1,12 +1,14 @@
 # 沉浸式双语译林 · Immersive Bilingual Press `v2.1`
 
-**简体中文** | **繁體中文** | **English** | **日本語**
+[简体中文](#cn) | [English](#en)
 
 <p align="center">
   <img src="./assets/readme/hero.svg" width="100%" alt="沉浸式双语译林：划选英文词句后点按译按钮，弹出可拖拽的流式译文卡片；另支持整页对照与 Alt 悬停快译">
 </p>
 
 ---
+
+<a id="cn"></a>
 
 ## 🇨🇳 简体中文说明
 
@@ -48,28 +50,7 @@
 
 ---
 
-## 🇹🇼 繁體中文說明
-
-**沉浸式雙語譯林 (Immersive Bilingual Press) v2.1** 是一款基於 Chrome / Edge Manifest V3 標準開發的網頁翻譯擴充功能。支援**Google翻譯**與**OpenAI 相容雲端 API**兩種引擎，內建**「雙語對照 / 僅顯示譯文」兩種顯示模式**（預設僅顯示譯文），並提供**「復古報刊書籍」**與**「液態玻璃」**兩套主題風格，以及**簡體中文、繁體中文、English、日本語**四種介面語言。
-
-### ✨ v2.0 核心亮點
-
-| 功能模組 | 詳細說明 |
-| :--- | :--- |
-| **🌍 多語種自由互譯** | 支援自動檢測來源語言及簡中、繁中、英、日、韓、法、德、西、俄、葡、阿等 12 種語言任意互譯，內建 `⇄` 一鍵互換與跨語種防複讀校驗。 |
-| **⚡ Google翻譯 + 雲端 API** | 可直接使用 Google翻譯；也可設定 **OpenAI 相容雲端 API** 的 API Key、模型名稱和介面位址。 |
-| **📜 復古書報 & 🫧 液態玻璃雙主題** | 保留兩種網頁譯文樣式；彈窗與設定頁使用統一的簡潔介面，隨主題使用棕色或藍色強調。 |
-| **🧭 精簡彈窗 + 獨立設定頁** | 彈窗提供語言方向、引擎、翻譯/還原和設定入口；在獨立分頁設定語言、引擎、外觀、互動及瀏覽器快捷鍵。僅顯示譯文優先排列並作為預設。 |
-
-### 大強同學｜AI 工具與自動化
-
-文章與工具：[dqtx.cc](https://www.dqtx.cc/) · [os.dqtx.cc](https://os.dqtx.cc/) · [blog.dqtx.cc](https://blog.dqtx.cc/)
-
-關注更新：[B 站](https://space.bilibili.com/491358682/upload/video) · [YouTube](https://www.youtube.com/@dqtx760/videos) · [即刻](https://web.okjike.com/u/24236868-c3e9-49ef-ab93-93a60e1a25db) · [CSDN](https://blog.csdn.net/2402_82616859?type=blog)
-
-公眾號：微信搜尋「大強同學」。
-
----
+<a id="en"></a>
 
 ## 🇺🇸 English Documentation
 
@@ -93,29 +74,6 @@ Articles & tools: [dqtx.cc](https://www.dqtx.cc/) · [os.dqtx.cc](https://os.dqt
 Follow for updates: [Bilibili](https://space.bilibili.com/491358682/upload/video) · [YouTube](https://www.youtube.com/@dqtx760/videos) · [即刻](https://web.okjike.com/u/24236868-c3e9-49ef-ab93-93a60e1a25db) · [CSDN](https://blog.csdn.net/2402_82616859?type=blog)
 
 WeChat public account: search for “大强同学” in WeChat.
-
----
-
-## 🇯🇵 日本語ドキュメント
-
-**没入型対訳プレス (Immersive Bilingual Press) `v2.1`** は、Chrome / Edge (Manifest V3) に対応したWebページ翻訳・選択テキスト翻訳拡張機能です。**Google オンライン翻訳**と**OpenAI 互換クラウド API**の2つのエンジンを搭載し、**「対訳 / 訳文のみ」の2つの表示モード**（デフォルトは訳文のみ）、**「レトロ新聞・書籍」**と**「リキッドガラス」**の2種類のビジュアルテーマ、さらに**簡体字中国語・繁体字中国語・英語・日本語**の4言語UI切り替えに対応しています。
-
-### ✨ v2.0 の主な特徴
-
-| 機能 | 詳細 |
-| :--- | :--- |
-| **🌍 多言語間の相互翻訳** | 自動検出および中国語（簡体字・繁体字）、日本語、英語、韓国語、フランス語、ドイツ語、スペイン語、ロシア語、ポルトガル語、アラビア語間の相互翻訳に対応。中国語から日本語への翻訳も自然かつ正確に出力します。 |
-| **⚡ Google 翻訳 + クラウド API** | Google 翻訳は設定不要ですぐに利用できます。また、OpenAI 互換クラウド API の API Key、モデル名、エンドポイントを設定できます。 |
-| **📜 レトロ新聞・書籍 & 🫧 リキッドガラスの2大テーマ** | クリーム色の紙質テクスチャと明朝体・セリフ体活字を用いた**「レトロ新聞・書籍」**スタイルと、透明感あふれるブラー効果と光の屈折を表現した**「リキッドガラス」**スタイルを搭載。「元のページに戻す」ボタンは各テーマの彩度・色調に調和したピンク配色を採用しています。 |
-| **🧭 コンパクトなポップアップと独立設定ページ** | ポップアップで言語とエンジンを選び、翻訳・復元を実行します。言語、API、外観、操作、ブラウザのショートカットは別タブの設定ページで管理します。「訳文のみ」が先頭で既定です。 |
-
-### 大強同学｜AI ツールと自動化
-
-記事・ツール：[dqtx.cc](https://www.dqtx.cc/) · [os.dqtx.cc](https://os.dqtx.cc/) · [blog.dqtx.cc](https://blog.dqtx.cc/)
-
-更新情報：[Bilibili](https://space.bilibili.com/491358682/upload/video) · [YouTube](https://www.youtube.com/@dqtx760/videos) · [即刻](https://web.okjike.com/u/24236868-c3e9-49ef-ab93-93a60e1a25db) · [CSDN](https://blog.csdn.net/2402_82616859?type=blog)
-
-WeChat 公式アカウント：WeChat で「大强同学」を検索してください。
 
 ---
 
