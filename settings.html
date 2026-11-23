@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light" />
+  <title>设置 · 沉浸式双语译林</title>
+  <link rel="stylesheet" href="ui-base.css" />
+  <link rel="stylesheet" href="settings.css" />
+</head>
+<body data-theme="retro-paper">
+  <div class="settings-shell">
+    <aside class="settings-sidebar">
+      <a class="settings-brand" href="#panel-translate" aria-label="沉浸式双语译林设置首页">
+        <span id="brand-mark" class="settings-brand-mark" aria-hidden="true">译</span>
+        <span id="brand-title">沉浸式双语译林</span>
+      </a>
+      <nav id="settings-nav" class="settings-nav" aria-label="设置分区" data-i18n-aria-label="navSectionLabel">
+        <a class="settings-nav-link" href="#panel-translate" data-target-panel="panel-translate" aria-current="page" data-i18n="navTitleTranslate">语种与引擎</a>
+        <a class="settings-nav-link" href="#panel-appearance" data-target-panel="panel-appearance" data-i18n="navTitleAppearance">外观与语言</a>
+        <a class="settings-nav-link" href="#panel-controls" data-target-panel="panel-controls" data-i18n="navTitleControls">交互与快捷键</a>
+        <a class="settings-nav-link" href="#panel-guide" data-target-panel="panel-guide" data-i18n="navTitleGuide">插件说明</a>
+      </nav>
+    </aside>
+
+    <main class="settings-main">
+      <header class="settings-header">
+        <h1 id="settings-title" data-i18n="settingsTitle">设置</h1>
+      </header>
+
+      <div class="settings-content">
+      <section id="panel-translate" class="settings-panel" aria-labelledby="panel-title-translate">
+        <div class="panel-heading">
+          <h2 id="panel-title-translate" data-i18n="panelTitleTranslate">语种与翻译引擎</h2>
+          <p id="preferences-hint" class="hint-text" data-i18n="preferencesHint">偏好设置即时保存；云端 API 配置请单独保存。</p>
+        </div>
+
+        <div class="settings-group">
+          <h3 id="label-lang-direction" data-i18n="labelLangDirection">翻译语种方向</h3>
+          <div class="language-direction">
+            <div class="form-field">
+              <label for="source-lang-select" id="label-source-lang" data-i18n="labelSourceLang">源语言</label>
+              <select id="source-lang-select" class="select-input"></select>
+            </div>
+            <button type="button" id="swap-lang-btn" class="swap-button" aria-label="交换源语言和目标语言" title="交换源语言和目标语言">
+              <span aria-hidden="true">⇄</span>
+            </button>
+            <div class="form-field">
+              <label for="target-lang-select" id="label-target-lang" data-i18n="labelTargetLang">目标语言</label>
+              <select id="target-lang-select" class="select-input"></select>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <h3 id="label-display-mode" data-i18n="labelDisplayMode">整页显示模式</h3>
+          <div id="display-mode-switcher" class="segmented-control" role="group" aria-labelledby="label-display-mode">
+            <button type="button" class="seg-btn" data-display-val="translation-only" id="btn-display-translation-only" aria-pressed="false" data-i18n="btnDisplayTranslationOnly">仅显示译文</button>
+            <button type="button" class="seg-btn" data-display-val="bilingual" id="btn-display-bilingual" aria-pressed="false" data-i18n="btnDisplayBilingual">双语对照</button>
+          </div>
+          <p id="display-mode-hint" class="hint-text" aria-live="polite"></p>
+        </div>
+
+        <div class="settings-group">
+          <h3 id="label-engine-select" data-i18n="labelEngineSelect">翻译引擎选择</h3>
+          <div id="engine-switcher" class="segmented-control" role="group" aria-labelledby="label-engine-select">
+            <button type="button" class="seg-btn" data-engine-val="google" id="btn-engine-google" aria-pressed="false" data-i18n="btnEngineGoogle">Google翻译</button>
+            <button type="button" class="seg-btn" data-engine-val="api" id="btn-engine-api" aria-pressed="false" data-i18n="btnEngineApi">云端 API</button>
+          </div>
+
+          <div id="google-panel" class="engine-panel" hidden>
+            <p id="google-ready-desc" class="hint-text" data-i18n="googleReadyDesc">Google翻译可直接使用，无需填写 API 配置。</p>
+          </div>
+
+          <div id="api-panel" class="engine-panel" hidden>
+            <form id="api-config-form" novalidate>
+              <div class="form-field">
+                <label for="api-provider-select" id="label-api-provider" data-i18n="labelApiProvider">服务商 (Provider)</label>
+                <select id="api-provider-select" class="select-input"></select>
+              </div>
+              <div class="form-field">
+                <label for="api-key-input" id="label-api-key" data-i18n="labelApiKey">API Key</label>
+                <div class="input-with-action">
+                  <input type="password" id="api-key-input" class="text-input" autocomplete="off" spellcheck="false" />
+                  <button type="button" id="toggle-api-key-btn" class="ui-button" aria-controls="api-key-input" aria-pressed="false">
+                    <span aria-hidden="true">◉</span>
+                    <span id="toggle-api-key-label">显示</span>
+                  </button>
+                </div>
+              </div>
+              <div class="form-field">
+                <label for="api-model-input" id="label-api-model" data-i18n="labelApiModel">模型 (Model)</label>
+                <input type="text" id="api-model-input" class="text-input" list="api-model-suggestions" autocomplete="off" />
+                <datalist id="api-model-suggestions"></datalist>
+              </div>
+              <div class="form-field">
+                <label for="api-base-url-input" id="label-api-base-url" data-i18n="labelApiBaseUrl">接口地址 (Base URL)</label>
+                <input type="text" id="api-base-url-input" class="text-input" inputmode="url" autocomplete="url" spellcheck="false" />
+              </div>
+              <div class="api-save-row">
+                <button type="submit" id="save-api-btn" class="ui-button primary" data-i18n="saveApiBtn">保存云端配置</button>
+                <p id="api-hint" class="status-message" role="status" aria-live="polite"></p>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <section id="panel-appearance" class="settings-panel" aria-labelledby="panel-title-appearance" hidden>
+        <div class="panel-heading">
+          <h2 id="panel-title-appearance" data-i18n="panelTitleAppearance">外观风格与界面语言</h2>
+        </div>
+        <div class="settings-group">
+          <h3 id="label-ui-theme" data-i18n="labelUiTheme">UI 视觉风格</h3>
+          <div id="theme-switcher" class="segmented-control" role="group" aria-labelledby="label-ui-theme">
+            <button type="button" class="seg-btn" data-theme-val="retro-paper" id="btn-theme-retro" aria-pressed="false" data-i18n="btnThemeRetro">复古报刊书籍</button>
+            <button type="button" class="seg-btn" data-theme-val="liquid-glass" id="btn-theme-liquid" aria-pressed="false" data-i18n="btnThemeLiquid">液态玻璃</button>
+          </div>
+          <p id="theme-desc-hint" class="hint-text" data-i18n="themeDescHint">切换后，插件主界面图标、网页双语段落块、划词气泡及悬浮球将同步切换为对应风格。</p>
+        </div>
+        <div class="settings-group">
+          <h3 id="label-ui-lang" data-i18n="labelUiLang">插件界面语言 (UI Language)</h3>
+          <div class="form-field language-field">
+            <label for="ui-lang-select" class="visually-hidden" id="ui-lang-label">插件界面语言</label>
+            <select id="ui-lang-select" class="select-input">
+              <option value="zh-CN">简体中文</option>
+              <option value="zh-TW">繁體中文</option>
+              <option value="en">English</option>
+              <option value="ja">日本語</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section id="panel-controls" class="settings-panel" aria-labelledby="panel-title-controls" hidden>
+        <div class="panel-heading">
+          <h2 id="panel-title-controls" data-i18n="panelTitleControls">交互与快捷开关</h2>
+        </div>
+        <div class="settings-group interaction-list">
+          <div class="interaction-row">
+            <div class="interaction-copy">
+              <h3 id="sw-title-selection" data-i18n="swTitleSelection">鼠标划词翻译</h3>
+              <p id="sw-desc-selection" class="hint-text" data-i18n="swDescSelection">选中网页任意词句浮现“译”按钮，点击弹出可拖拽翻译卡片</p>
+            </div>
+            <input type="checkbox" id="sw-selection" />
+            <label for="sw-selection" class="visually-hidden" id="sw-selection-label">鼠标划词翻译</label>
+          </div>
+          <div class="interaction-row">
+            <div class="interaction-copy">
+              <h3 id="sw-title-althover" data-i18n="swTitleAltHover">Alt 悬停段落翻译</h3>
+              <p id="sw-desc-althover" class="hint-text" data-i18n="swDescAltHover">鼠标指针悬停在段落上按一下 Alt 键，即刻单独翻译或还原该段</p>
+            </div>
+            <input type="checkbox" id="sw-alt-hover" />
+            <label for="sw-alt-hover" class="visually-hidden" id="sw-alt-hover-label">Alt 悬停段落翻译</label>
+          </div>
+          <div class="interaction-row">
+            <div class="interaction-copy">
+              <h3 id="sw-title-ball" data-i18n="swTitleBall">页面悬浮球</h3>
+              <p id="sw-desc-ball" class="hint-text" data-i18n="swDescBall">点击翻译或还原网页，按住可拖动位置。</p>
+            </div>
+            <input type="checkbox" id="sw-floating-ball" />
+            <label for="sw-floating-ball" class="visually-hidden" id="sw-floating-ball-label" data-i18n="swTitleBall">页面悬浮球</label>
+          </div>
+        </div>
+
+        <div class="settings-group shortcut-group">
+          <div>
+            <h3 id="page-shortcut-label" data-i18n="pageShortcut">整页翻译快捷键</h3>
+            <p id="shortcut-hint" class="hint-text" data-i18n="shortcutHint">在浏览器的扩展快捷键页面中修改，可用于翻译或还原当前网页。</p>
+          </div>
+          <kbd id="page-shortcut" aria-labelledby="page-shortcut-label">未设置</kbd>
+          <button type="button" id="manage-shortcuts-btn" class="ui-button" data-i18n="manageShortcuts">管理浏览器快捷键</button>
+        </div>
+      </section>
+
+      <section id="panel-guide" class="settings-panel" aria-labelledby="panel-title-guide" hidden>
+        <div class="panel-heading">
+          <h2 id="panel-title-guide" data-i18n="panelTitleGuide">插件说明</h2>
+        </div>
+        <div class="settings-group">
+          <h3 id="guide-section-title" data-i18n="guideSectionTitle">核心功能使用说明</h3>
+          <ul id="guide-list-content" class="guide-list"></ul>
+        </div>
+        <div class="settings-group about-group">
+          <h3 id="author-heading" data-i18n="authorHeading">大强同学｜AI工具与自动化</h3>
+          <div class="author-links">
+            <div class="author-link-row">
+              <span id="author-row-articles" class="author-link-label" data-i18n="authorRowArticles">文章与工具</span>
+              <a href="https://www.dqtx.cc/" target="_blank" rel="noopener noreferrer" class="social-link">dqtx.cc ↗</a>
+              <a href="https://os.dqtx.cc/" target="_blank" rel="noopener noreferrer" class="social-link">os.dqtx.cc ↗</a>
+              <a href="https://blog.dqtx.cc/" target="_blank" rel="noopener noreferrer" class="social-link">blog.dqtx.cc ↗</a>
+            </div>
+            <div class="author-link-row">
+              <span id="author-row-updates" class="author-link-label" data-i18n="authorRowUpdates">关注更新</span>
+              <a href="https://space.bilibili.com/491358682/upload/video" target="_blank" rel="noopener noreferrer" class="social-link">B 站 ↗</a>
+              <a href="https://www.youtube.com/@dqtx760/videos" target="_blank" rel="noopener noreferrer" class="social-link">YouTube ↗</a>
+              <a href="https://web.okjike.com/u/24236868-c3e9-49ef-ab93-93a60e1a25db" target="_blank" rel="noopener noreferrer" class="social-link">即刻 ↗</a>
+              <a href="https://blog.csdn.net/2402_82616859?type=blog" target="_blank" rel="noopener noreferrer" class="social-link">CSDN ↗</a>
+            </div>
+            <p id="author-row-wechat" class="author-wechat" data-i18n="authorRowWechat">公众号：微信搜索「大强同学」</p>
+          </div>
+          <img class="author-qr" src="images/wechat-public-account.webp" alt="大强同学微信公众号搜索指引图片" width="397" height="137" />
+        </div>
+      </section>
+
+      </div>
+
+      <footer class="settings-footer">
+        <p id="settings-footer-save-status" class="status-message" role="status" aria-live="polite"></p>
+      </footer>
+    </main>
+  </div>
+
+  <script src="ui-common.js"></script>
+  <script src="settings.js"></script>
+</body>
+</html>

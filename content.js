@@ -1,8 +1,8 @@
 /**
- * Ollama & Google 沉浸式翻译 v2.0 - 网页端核心交互脚本 (Content Script)
+ * Google 与云端 API 沉浸式翻译 - 网页端核心交互脚本 (Content Script)
  * 支持：
  * 1. 多语种智能识别与过滤（彻底修复中文网页翻日语/英语等被跳过不翻译的问题，以及日文汉字被误判为中文的问题）
- * 2. 双翻译引擎联动（本地 Ollama / 自定义模型 + Google 在线翻译）
+ * 2. Google 在线翻译与自定义云端 API 联动
  * 3. 双 UI 视觉主题实时切换（复古报纸书籍风格 retro-paper / 液态玻璃风格 liquid-glass）
  * 4. 插件 4 种界面语言同步（简体中文 zh-CN / 繁體中文 zh-TW / English en / 日本語 ja）
  * 5. 整页段落双语对照、鼠标划词翻译、Alt 悬停段落翻译、右侧悬浮球与 Alt+A 快捷键
@@ -24,8 +24,8 @@
       translatingWith: (engine, tgt) => `正在使用 ${engine} 译为 ${tgt}...`,
       errorPrefix: "翻译出错：",
       googleName: "Google 翻译",
-      localDefault: "本地大模型",
-      ballTooltip: "点击开启/还原整页双语翻译 (快捷键 Alt + A)",
+      cloudApiDefault: "云端 API",
+      ballTooltip: "点击翻译或还原当前网页；按住左键可拖动",
       langLabels: {
         "auto": "自动",
         "zh-CN": "简中",
@@ -52,8 +52,8 @@
       translatingWith: (engine, tgt) => `正在使用 ${engine} 譯為 ${tgt}...`,
       errorPrefix: "翻譯出錯：",
       googleName: "Google 翻譯",
-      localDefault: "本地大模型",
-      ballTooltip: "點擊開啟/還原整頁雙語翻譯 (快捷鍵 Alt + A)",
+      cloudApiDefault: "雲端 API",
+      ballTooltip: "點擊翻譯或還原目前網頁；按住左鍵可拖曳",
       langLabels: {
         "auto": "自動",
         "zh-CN": "簡中",
@@ -80,8 +80,8 @@
       translatingWith: (engine, tgt) => `Translating into ${tgt} via ${engine}...`,
       errorPrefix: "Error: ",
       googleName: "Google Translate",
-      localDefault: "Local LLM",
-      ballTooltip: "Toggle full-page bilingual translation (Alt + A)",
+      cloudApiDefault: "Cloud API",
+      ballTooltip: "Click to translate or restore the current page; hold the left mouse button to drag",
       langLabels: {
         "auto": "Auto",
         "zh-CN": "ZH-CN",
@@ -108,8 +108,8 @@
       translatingWith: (engine, tgt) => `${engine} で ${tgt} に翻訳中...`,
       errorPrefix: "翻訳エラー：",
       googleName: "Google 翻訳",
-      localDefault: "ローカル LLM",
-      ballTooltip: "ページ全体の対訳を切替 (Alt + A)",
+      cloudApiDefault: "クラウド API",
+      ballTooltip: "クリックで翻訳または復元、左ボタンを押したままドラッグ",
       langLabels: {
         "auto": "自動",
         "zh-CN": "簡体中",
@@ -128,10 +128,11 @@
   };
 
   let settings = {
-    translateEngine: "ollama",
-    selectedModel: "",
+    translateEngine: "google",
+    apiModel: "",
     sourceLang: "auto",
     targetLang: "zh-CN",
+    displayMode: "translation-only",
     uiTheme: "retro-paper",
     uiLang: "zh-CN",
     enableSelection: true,
@@ -146,6 +147,7 @@
 
   let activeCount = 0;
   const translationQueue = [];
+  const textTranslations = new Map();
   let intersectionObserver = null;
 
   let currentHoveredBlock = null;
@@ -157,17 +159,31 @@
   let currentSelectionReqId = null;
 
   let floatingBall = null;
+  let floatingBallPosition = null;
+  let floatingBallPointer = null;
+  let suppressFloatingBallClick = false;
 
   function i18n() {
     return CONTENT_I18N[settings.uiLang] || CONTENT_I18N["zh-CN"];
   }
 
+  function normalizeTranslateEngine(engine) {
+    return engine === "api" || engine === "google" ? engine : "google";
+  }
+
   function getMaxConcurrent() {
-    return settings.translateEngine === "google" ? 5 : 2;
+    return settings.translateEngine === "api" ? 4 : 5;
   }
 
   chrome.storage.local.get(Object.keys(settings), stored => {
-    settings = { ...settings, ...stored };
+    settings = {
+      ...settings,
+      ...stored,
+      translateEngine: normalizeTranslateEngine(stored.translateEngine)
+    };
+    if (stored.translateEngine !== settings.translateEngine) {
+      chrome.storage.local.set({ translateEngine: settings.translateEngine });
+    }
     applyThemeToInjectedElements();
     updateFloatingBallVisibility();
     updateFloatingBallState();
@@ -177,13 +193,17 @@
     let engineOrLangChanged = false;
     for (const [key, { newValue }] of Object.entries(changes)) {
       if (key in settings && newValue !== undefined) {
+        const value = key === "translateEngine" ? normalizeTranslateEngine(newValue) : newValue;
         if (
-          (key === "targetLang" || key === "sourceLang" || key === "translateEngine" || key === "selectedModel") &&
-          settings[key] !== newValue
+          (key === "targetLang" || key === "sourceLang" || key === "translateEngine" || key === "apiModel" || key === "displayMode") &&
+          settings[key] !== value
         ) {
           engineOrLangChanged = true;
         }
-        settings[key] = newValue;
+        settings[key] = value;
+        if (key === "translateEngine" && value !== newValue) {
+          chrome.storage.local.set({ translateEngine: value });
+        }
       }
     }
     applyThemeToInjectedElements();
@@ -388,14 +408,108 @@
 
   function getEngineDisplayName() {
     const dict = i18n();
-    if (settings.translateEngine === "google") {
-      return dict.googleName;
+    if (settings.translateEngine === "api") {
+      return settings.apiModel || dict.cloudApiDefault;
     }
-    return settings.selectedModel || dict.localDefault;
+    return dict.googleName;
+  }
+
+  function translateTextNodes(el, prioritize) {
+    if (textTranslations.has(el)) removeBlockTranslation(el);
+    const records = [];
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
+      acceptNode: node => {
+        const parent = node.parentElement;
+        if (!parent || parent.closest(
+          "script, style, pre, code, svg, noscript, textarea, input, select, [contenteditable]:not([contenteditable='false']), [translate='no'], .notranslate, .oit-bilingual-block, #oit-selection-popup, #oit-selection-btn, #oit-floating-ball"
+        )) return NodeFilter.FILTER_REJECT;
+        if (parent.closest("p, h1, h2, h3, h4, h5, h6, li, blockquote, figcaption, dd, td") !== el) {
+          return NodeFilter.FILTER_REJECT;
+        }
+        const style = getComputedStyle(parent);
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        if (!range.getClientRects().length || style.visibility !== "visible" || /\bMaterial (?:Icons|Symbols)\b/i.test(style.fontFamily)) {
+          return NodeFilter.FILTER_REJECT;
+        }
+        return shouldTranslateText(node.data, prioritize) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+      }
+    });
+    while (walker.nextNode()) {
+      records.push({ node: walker.currentNode, original: walker.currentNode.data, translated: null });
+    }
+    if (!records.length) return;
+
+    const state = { records, cancel: null };
+    textTranslations.set(el, state);
+    el.dataset.oitState = "queued";
+
+    const task = () => {
+      let index = 0;
+      let finished = false;
+      const finish = () => {
+        if (finished) return;
+        finished = true;
+        activeCount = Math.max(0, activeCount - 1);
+        processNextInQueue();
+      };
+      state.cancel = finish;
+
+      const next = () => {
+        if (!el.isConnected || textTranslations.get(el) !== state) {
+          finish();
+          return;
+        }
+        const record = records[index++];
+        if (!record) {
+          el.dataset.oitState = "translated";
+          delete el.dataset.oitReqId;
+          finish();
+          return;
+        }
+        if (!el.contains(record.node) || record.node.data !== record.original) {
+          next();
+          return;
+        }
+
+        el.dataset.oitState = "translating";
+        el.dataset.oitReqId = requestStreamingTranslation(record.original.trim(), {
+          onDone: fullText => {
+            if (textTranslations.get(el) !== state) return;
+            if (el.contains(record.node) && record.node.data === record.original) {
+              const leading = record.original.match(/^\s*/)[0];
+              const trailing = record.original.match(/\s*$/)[0];
+              record.translated = leading + (fullText || record.original.trim()) + trailing;
+              record.node.data = record.translated;
+            }
+            next();
+          },
+          onError: () => {
+            if (textTranslations.get(el) !== state) return;
+            el.dataset.oitState = "error";
+            delete el.dataset.oitReqId;
+            finish();
+          }
+        });
+      };
+      next();
+    };
+
+    if (prioritize) {
+      translationQueue.unshift({ el, run: task });
+    } else {
+      translationQueue.push({ el, run: task });
+    }
+    processNextInQueue();
   }
 
   function translateBlockElement(el, prioritize = false) {
-    if (!el || el.dataset.oitState === "translated" || el.dataset.oitState === "translating") {
+    if (!el || el.dataset.oitState === "queued" || el.dataset.oitState === "translated" || el.dataset.oitState === "translating") {
+      return;
+    }
+
+    if (settings.displayMode === "translation-only") {
+      translateTextNodes(el, prioritize);
       return;
     }
 
@@ -479,6 +593,14 @@
       cancelStreamingRequest(el.dataset.oitReqId);
       delete el.dataset.oitReqId;
     }
+    const state = textTranslations.get(el);
+    if (state) {
+      textTranslations.delete(el);
+      state.records.forEach(({ node, original, translated }) => {
+        if (translated !== null && node.data === translated) node.data = original;
+      });
+      state.cancel && state.cancel();
+    }
     const blocks = el.querySelectorAll(":scope > .oit-bilingual-block");
     blocks.forEach(b => b.remove());
     delete el.dataset.oitState;
@@ -531,6 +653,7 @@
     }
     pendingCallbacks.clear();
 
+    textTranslations.forEach((state, el) => removeBlockTranslation(el));
     document.querySelectorAll(".oit-bilingual-block").forEach(node => node.remove());
     document.querySelectorAll("[data-oit-state]").forEach(el => {
       delete el.dataset.oitState;
@@ -587,12 +710,6 @@
   }
 
   document.addEventListener("keydown", e => {
-    if (e.altKey && (e.key === "a" || e.key === "A")) {
-      e.preventDefault();
-      togglePageTranslation();
-      return;
-    }
-
     if (
       settings.enableAltHover &&
       e.key === "Alt" &&
@@ -616,6 +733,11 @@
   });
 
   // ==================== 3. 鼠标划词翻译 ====================
+
+  function isEnglishSelection(text) {
+    if (!/[A-Za-z]/.test(text)) return false;
+    return !/[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/.test(text);
+  }
 
   function removeSelectionUI() {
     if (selectionBtn) {
@@ -649,7 +771,7 @@
       const sel = window.getSelection();
       const text = sel ? sel.toString().trim() : "";
 
-      if (!text || text.length < 1 || !shouldTranslateText(text, true)) {
+      if (!text || text.length < 1 || !shouldTranslateText(text, true) || !isEnglishSelection(text)) {
         removeSelectionUI();
         return;
       }
@@ -807,19 +929,109 @@
   function createFloatingBall() {
     if (floatingBall) return;
     const dict = i18n();
-    floatingBall = document.createElement("div");
+    floatingBall = document.createElement("button");
+    floatingBall.type = "button";
     floatingBall.id = "oit-floating-ball";
     floatingBall.setAttribute("data-oit-theme", settings.uiTheme || "retro-paper");
     floatingBall.title = dict.ballTooltip;
-    floatingBall.innerHTML = `<span class="oit-ball-dot"></span><span class="oit-ball-label">${escapeHtml(dict.badge)}</span>`;
+    floatingBall.setAttribute("aria-label", dict.ballTooltip);
+    floatingBall.setAttribute("aria-pressed", String(isPageTranslated));
+    floatingBall.innerHTML = `<span class="oit-ball-label">${escapeHtml(dict.badge)}</span>`;
 
-    floatingBall.addEventListener("click", () => {
+    floatingBall.addEventListener("pointerdown", event => {
+      if (!event.isPrimary || event.button !== 0) return;
+      suppressFloatingBallClick = false;
+      const rect = floatingBall.getBoundingClientRect();
+      floatingBallPointer = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        startLeft: rect.left,
+        startTop: rect.top,
+        dragging: false
+      };
+      floatingBall.setPointerCapture(event.pointerId);
+    });
+
+    floatingBall.addEventListener("pointermove", event => {
+      const pointer = floatingBallPointer;
+      if (!pointer || pointer.pointerId !== event.pointerId) return;
+
+      const dx = event.clientX - pointer.startX;
+      const dy = event.clientY - pointer.startY;
+      if (!pointer.dragging && Math.hypot(dx, dy) < 4) return;
+      if (!pointer.dragging) {
+        pointer.dragging = true;
+        floatingBall.classList.add("oit-dragging");
+        document.documentElement.classList.add("oit-floating-ball-dragging");
+      }
+      event.preventDefault();
+      setFloatingBallPosition(pointer.startLeft + dx, pointer.startTop + dy);
+    });
+
+    const finishPointer = (event, canceled = false) => {
+      const pointer = floatingBallPointer;
+      if (!pointer || pointer.pointerId !== event.pointerId) return;
+      floatingBallPointer = null;
+      floatingBall.classList.remove("oit-dragging");
+      document.documentElement.classList.remove("oit-floating-ball-dragging");
+      if (canceled || pointer.dragging) suppressFloatingBallClick = true;
+      if (canceled && floatingBall.hasPointerCapture(event.pointerId)) {
+        floatingBall.releasePointerCapture(event.pointerId);
+      }
+    };
+
+    floatingBall.addEventListener("pointerup", event => finishPointer(event));
+    floatingBall.addEventListener("pointercancel", event => finishPointer(event, true));
+    floatingBall.addEventListener("lostpointercapture", event => finishPointer(event, true));
+    window.addEventListener("blur", () => {
+      if (floatingBallPointer) {
+        finishPointer({ pointerId: floatingBallPointer.pointerId }, true);
+      }
+    });
+
+    floatingBall.addEventListener("click", event => {
+      if (suppressFloatingBallClick && event.detail !== 0) {
+        suppressFloatingBallClick = false;
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      suppressFloatingBallClick = false;
       togglePageTranslation();
     });
 
     document.body.appendChild(floatingBall);
+    if (floatingBallPosition) {
+      setFloatingBallPosition(floatingBallPosition.left, floatingBallPosition.top);
+    } else {
+      const rect = floatingBall.getBoundingClientRect();
+      setFloatingBallPosition(rect.left, rect.top);
+    }
     updateFloatingBallState();
   }
+
+  function setFloatingBallPosition(left, top) {
+    if (!floatingBall) return;
+    const rect = floatingBall.getBoundingClientRect();
+    const margin = 8;
+    const viewportWidth = Math.min(window.innerWidth, document.documentElement.clientWidth);
+    const viewportHeight = Math.min(window.innerHeight, document.documentElement.clientHeight);
+    const maxLeft = Math.max(margin, viewportWidth - rect.width - margin);
+    const maxTop = Math.max(margin, viewportHeight - rect.height - margin);
+    const nextLeft = Math.max(margin, Math.min(maxLeft, left));
+    const nextTop = Math.max(margin, Math.min(maxTop, top));
+    floatingBall.style.left = `${nextLeft}px`;
+    floatingBall.style.top = `${nextTop}px`;
+    floatingBall.style.right = "auto";
+    floatingBallPosition = { left: nextLeft, top: nextTop };
+  }
+
+  window.addEventListener("resize", () => {
+    if (floatingBall && floatingBall.style.display !== "none" && floatingBallPosition) {
+      setFloatingBallPosition(floatingBallPosition.left, floatingBallPosition.top);
+    }
+  });
 
   function updateFloatingBallVisibility() {
     if (settings.enableFloatingBall) {
@@ -827,6 +1039,9 @@
       if (floatingBall) {
         floatingBall.setAttribute("data-oit-theme", settings.uiTheme || "retro-paper");
         floatingBall.style.display = "flex";
+        if (floatingBallPosition) {
+          setFloatingBallPosition(floatingBallPosition.left, floatingBallPosition.top);
+        }
       }
     } else if (floatingBall) {
       floatingBall.style.display = "none";
@@ -838,11 +1053,12 @@
     const dict = i18n();
     floatingBall.setAttribute("data-oit-theme", settings.uiTheme || "retro-paper");
     floatingBall.title = dict.ballTooltip;
+    floatingBall.setAttribute("aria-label", dict.ballTooltip);
+    floatingBall.setAttribute("aria-pressed", String(isPageTranslated));
     const label = floatingBall.querySelector(".oit-ball-label");
-    const tgtShort = dict.langLabels[settings.targetLang] || settings.targetLang;
     if (isPageTranslated) {
       floatingBall.classList.add("oit-active");
-      if (label) label.textContent = `${dict.activePrefix}${tgtShort}`;
+      if (label) label.textContent = "↶";
     } else {
       floatingBall.classList.remove("oit-active");
       if (label) label.textContent = dict.badge;

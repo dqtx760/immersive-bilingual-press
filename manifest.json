@@ -1,40 +1,40 @@
 {
   "manifest_version": 3,
-  "name": "Ollama & Google 沉浸式双语网页翻译 (复古书报 / 液态玻璃双主题)",
-  "version": "2.0.0",
-  "description": "支持多语种互译、本地任意 Ollama/OpenAI 兼容大模型与在线 Google 翻译自由切换，内置复古报纸书籍排版与苹果 Liquid Glass 液态玻璃双 UI 主题。",
+  "name": "沉浸式双语网页翻译 (云端 API / Google)",
+  "version": "2.1.0",
+  "description": "支持多语种互译、OpenAI 兼容云端 API（OpenAI/DeepSeek/Moonshot/OpenRouter 等）与在线 Google 翻译自由切换；内置双语对照与仅显示译文两种模式及复古书报/液态玻璃双主题。",
   "permissions": [
     "storage",
     "activeTab",
-    "scripting",
-    "declarativeNetRequest"
+    "scripting"
   ],
   "host_permissions": [
-    "http://localhost:11434/*",
-    "http://127.0.0.1:11434/*",
     "https://translate.googleapis.com/*",
     "https://clients5.google.com/*",
     "<all_urls>"
   ],
-  "declarative_net_request": {
-    "rule_resources": [
-      {
-        "id": "ollama_cors_bypass",
-        "enabled": true,
-        "path": "rules.json"
-      }
-    ]
-  },
   "background": {
     "service_worker": "background.js"
   },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "沉浸式双语翻译 (Ollama / Google)",
+    "default_title": "沉浸式双语翻译 (云端 API / Google)",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
+    }
+  },
+  "options_ui": {
+    "page": "settings.html",
+    "open_in_tab": true
+  },
+  "commands": {
+    "toggle-page-translate": {
+      "suggested_key": {
+        "default": "Alt+A"
+      },
+      "description": "翻译或还原当前网页"
     }
   },
   "icons": {

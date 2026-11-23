@@ -362,89 +362,113 @@ html[data-oit-theme="liquid-glass"] .oit-hover-target {
   flex-shrink: 0;
 }
 
-/* ==================== 4. 右侧极简悬浮球（激活还原态同步为对应主题粉红色调） ==================== */
+/* ==================== 4. 右侧可拖动悬浮球 ==================== */
 #oit-floating-ball {
   position: fixed;
-  right: 0;
+  right: 12px;
   top: 42%;
   z-index: 2147483645;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 11px 8px 13px;
-  cursor: pointer;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  padding: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: grab;
   user-select: none;
-  font-size: 12.5px;
+  -webkit-user-select: none;
+  touch-action: none;
+  font-size: 14px;
   font-weight: 700;
-  transition: padding-right 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  line-height: 1;
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-/* 复古报纸书签悬浮球 */
+/* 复古报纸主题 */
 #oit-floating-ball,
 #oit-floating-ball[data-oit-theme="retro-paper"] {
   background: #f4ecd8;
   color: #2b2218;
-  border: 1.5px solid #4a3b2c;
-  border-right: none;
-  border-radius: 4px 0 0 4px;
-  box-shadow: -3px 3px 0px rgba(43, 34, 24, 0.78), -2px 4px 12px rgba(43, 34, 24, 0.18);
+  border: 1px solid #4a3b2c;
+  border-radius: 50%;
+  box-shadow: 0 2px 7px rgba(43, 34, 24, 0.2);
   font-family: "Georgia", "Songti SC", "STSong", "Noto Serif SC", serif;
 }
 
 #oit-floating-ball[data-oit-theme="retro-paper"]:hover {
-  padding-right: 16px;
   background: #efe2c4;
 }
 
-/* 复古书报激活还原态：古典干枯玫瑰胭脂粉 */
+/* 复古报纸主题还原态 */
 #oit-floating-ball[data-oit-theme="retro-paper"].oit-active {
-  background: linear-gradient(180deg, #cf6a7e 0%, #b85267 100%);
-  color: #fff9fa;
-  border-color: #3d1d24;
+  background: #76543b;
+  color: #fffaf0;
+  border-color: #4a3b2c;
 }
 
-/* 液态玻璃悬浮球 */
+/* 液态玻璃主题 */
 #oit-floating-ball[data-oit-theme="liquid-glass"] {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.75), rgba(230, 242, 255, 0.58));
   backdrop-filter: blur(20px) saturate(190%);
   -webkit-backdrop-filter: blur(20px) saturate(190%);
   color: #0f172a;
   border: 1px solid rgba(255, 255, 255, 0.88);
-  border-right: none;
-  border-radius: 22px 0 0 22px;
+  border-radius: 50%;
   box-shadow:
-    -4px 8px 24px rgba(15, 23, 42, 0.14),
+    0 3px 10px rgba(15, 23, 42, 0.16),
     inset 0 1px 1px rgba(255, 255, 255, 0.95);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", sans-serif;
 }
 
 #oit-floating-ball[data-oit-theme="liquid-glass"]:hover {
-  padding-right: 17px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(219, 234, 254, 0.78));
 }
 
-/* 液态玻璃激活还原态：高透樱花玫瑰流体玻璃粉 */
+/* 液态玻璃主题还原态 */
 #oit-floating-ball[data-oit-theme="liquid-glass"].oit-active {
-  background: linear-gradient(135deg, rgba(244, 114, 182, 0.88), rgba(236, 72, 153, 0.84));
+  background: #2457d6;
   color: #ffffff;
-  border-color: rgba(255, 240, 248, 0.82);
+  border-color: rgba(219, 234, 254, 0.9);
   box-shadow:
-    -4px 8px 24px rgba(236, 72, 153, 0.32),
+    0 3px 10px rgba(37, 99, 235, 0.28),
     inset 0 1px 1px rgba(255, 255, 255, 0.85);
 }
 
-.oit-ball-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #9c8468;
+#oit-floating-ball .oit-ball-label {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
 }
 
-#oit-floating-ball.oit-active .oit-ball-dot {
-  background: #ffe4e6;
-  box-shadow: 0 0 6px #ffe4e6;
+#oit-floating-ball:focus-visible {
+  outline: 3px solid #9a6b43;
+  outline-offset: 3px;
 }
 
-#oit-floating-ball[data-oit-theme="liquid-glass"].oit-active .oit-ball-dot {
-  background: #ffffff;
-  box-shadow: 0 0 8px #ffffff;
+#oit-floating-ball[data-oit-theme="liquid-glass"]:focus-visible {
+  outline-color: #3b82f6;
+}
+
+#oit-floating-ball.oit-dragging {
+  cursor: grabbing;
+  transition: none;
+}
+
+html.oit-floating-ball-dragging,
+html.oit-floating-ball-dragging * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #oit-floating-ball {
+    transition: none;
+  }
 }

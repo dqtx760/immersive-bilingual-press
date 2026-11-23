@@ -1,26 +1,22 @@
 /**
- * Ollama & Google 沉浸式翻译 - 后台服务脚本 (Manifest V3 Service Worker)
- * 核心功能：
- * 1. 多语言互译支持（自动检测 + 12 种常见语言自由互译，彻底修复中文译日语/英语等不翻译的问题）
- * 2. 双翻译引擎切换：本地大模型 (Ollama / OpenAI 兼容接口) + 在线 Google 翻译 (免 Key 高速接口)
- * 3. 本地任意模型兼容修复：
- *    - 支持手动添加/输入任意自定义模型名（如 qwen2.5、deepseek-r1、llama3、mistral、sakura 等）并持久化保存，不被自动探测覆盖
- *    - 自动兼容 /api/chat -> /api/generate -> /v1/chat/completions 三种本地推理接口
- *    - 深度清理 DeepSeek-R1 / QwQ 等推理模型的 <think> 思考块与角色前缀复读
+ * Google 与云端 API 沉浸式翻译 - 后台服务脚本 (Manifest V3 Service Worker)
+ * 支持多语言互译、Google 在线翻译与 OpenAI 兼容云端 API。
  */
 
 const DEFAULT_SETTINGS = {
-  translateEngine: "ollama", // "ollama" | "google"
-  ollamaHost: "http://localhost:11434",
-  selectedModel: "",
-  customModels: [],
+  translateEngine: "google", // "google" | "api"
   sourceLang: "auto",
   targetLang: "zh-CN",
+  displayMode: "translation-only", // "bilingual" | "translation-only"
   uiTheme: "retro-paper", // "retro-paper" | "liquid-glass"
   uiLang: "zh-CN", // "zh-CN" | "zh-TW" | "en" | "ja"
   enableSelection: true,
   enableAltHover: true,
-  enableFloatingBall: true
+  enableFloatingBall: true,
+  apiProvider: "deepseek",
+  apiBaseUrl: "https://api.deepseek.com/v1",
+  apiKey: "",
+  apiModel: "deepseek-chat"
 };
 
 // 支持的语言元数据表
@@ -115,219 +111,42 @@ const LANGUAGE_MAP = {
 chrome.runtime.onInstalled.addListener(async () => {
   const stored = await chrome.storage.local.get(Object.keys(DEFAULT_SETTINGS));
   const merged = { ...DEFAULT_SETTINGS, ...stored };
-  if (!Array.isArray(merged.customModels)) {
-    merged.customModels = [];
-  }
+  merged.translateEngine = normalizeTranslateEngine(merged.translateEngine);
+  if (stored.apiProvider === "custom" && !stored.apiBaseUrl) merged.apiBaseUrl = "";
   await chrome.storage.local.set(merged);
-  fetchAndSelectBestModel(merged.ollamaHost, merged.selectedModel, merged.customModels).catch(() => {});
 });
 
-/**
- * 智能选择默认本地模型：
- * 1. 如果用户已经手动选定或输入了自定义模型，严格保留用户的选择（修复切换其他模型失效的 Bug）
- * 2. 若未选择，则优先推荐 gemma3:4b / gemma4 / qwen / llama 等模型
- */
-function pickPreferredModel(models, currentSelected, customModels = []) {
-  const apiNames = Array.isArray(models) ? models.map(m => m.name || m.model).filter(Boolean) : [];
-  const allKnownNames = Array.from(new Set([...apiNames, ...(Array.isArray(customModels) ? customModels : [])]));
-
-  if (currentSelected && currentSelected.trim()) {
-    const trimmed = currentSelected.trim();
-    if (allKnownNames.includes(trimmed)) {
-      return trimmed;
-    }
-    const matchedWithLatest = allKnownNames.find(
-      n => n.toLowerCase() === trimmed.toLowerCase() || n.toLowerCase() === `${trimmed.toLowerCase()}:latest`
-    );
-    if (matchedWithLatest) return matchedWithLatest;
-    return trimmed;
-  }
-
-  if (allKnownNames.length === 0) return "";
-
-  const priorityMatchers = [
-    n => n.toLowerCase() === "gemma3:4b",
-    n => n.toLowerCase().startsWith("gemma3:4b"),
-    n => n.toLowerCase() === "gemma4:latest" || n.toLowerCase() === "gemma4",
-    n => n.toLowerCase().startsWith("gemma4"),
-    n => n.toLowerCase().includes("gemma3"),
-    n => n.toLowerCase().includes("gemma"),
-    n => n.toLowerCase().includes("qwen"),
-    n => n.toLowerCase().includes("deepseek"),
-    n => n.toLowerCase().includes("llama")
-  ];
-
-  for (const matcher of priorityMatchers) {
-    const found = allKnownNames.find(matcher);
-    if (found) return found;
-  }
-
-  return allKnownNames[0];
+function normalizeTranslateEngine(engine) {
+  return engine === "api" || engine === "google" ? engine : "google";
 }
 
-/**
- * 调用 Ollama /api/tags 或兼容的 /v1/models 读取本地模型列表，并合并用户手动添加的本地模型
- */
-async function fetchAndSelectBestModel(
-  host = "http://localhost:11434",
-  currentSelected = "",
-  customModels = []
-) {
-  const cleanHost = (host || "http://localhost:11434").trim().replace(/\/+$/, "");
-  const endpoints = [cleanHost];
-  if (cleanHost.includes("localhost")) {
-    endpoints.push(cleanHost.replace("localhost", "127.0.0.1"));
-  } else if (cleanHost.includes("127.0.0.1")) {
-    endpoints.push(cleanHost.replace("127.0.0.1", "localhost"));
-  }
-
-  let lastError = null;
-  for (const baseUrl of endpoints) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4500);
-
-      let rawModels = [];
-      let connectedOk = false;
-
-      try {
-        const res = await fetch(`${baseUrl}/api/tags`, {
-          method: "GET",
-          signal: controller.signal
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data.models)) {
-            rawModels = data.models.map(m => ({
-              name: m.name || m.model,
-              size: m.size || 0,
-              source: "ollama"
-            })).filter(m => m.name);
-            connectedOk = true;
-          }
-        } else {
-          lastError = new Error(`HTTP ${res.status}: ${res.statusText}`);
-        }
-      } catch (e) {
-        lastError = e;
-      }
-
-      if (!connectedOk) {
-        const v1Res = await fetch(`${baseUrl}/v1/models`, {
-          method: "GET",
-          signal: controller.signal
-        });
-        if (v1Res.ok) {
-          const v1Data = await v1Res.json();
-          if (Array.isArray(v1Data.data)) {
-            rawModels = v1Data.data.map(m => ({
-              name: m.id,
-              size: 0,
-              source: "openai-compat"
-            })).filter(m => m.name);
-            connectedOk = true;
-          }
-        }
-      }
-
-      clearTimeout(timeoutId);
-
-      if (!connectedOk) {
-        throw lastError || new Error("未响应 /api/tags 或 /v1/models");
-      }
-
-      const existingNames = new Set(rawModels.map(m => m.name));
-      const validCustom = Array.isArray(customModels) ? customModels : [];
-      for (const cm of validCustom) {
-        if (cm && !existingNames.has(cm)) {
-          rawModels.push({ name: cm, size: 0, isCustom: true });
-          existingNames.add(cm);
-        }
-      }
-
-      const bestModel = pickPreferredModel(rawModels, currentSelected, validCustom);
-
-      rawModels.sort((a, b) => {
-        const score = item => {
-          const lower = item.name.toLowerCase();
-          if (item.isCustom) return 110;
-          if (lower.startsWith("gemma3:4b")) return 100;
-          if (lower.startsWith("gemma4")) return 95;
-          if (lower.includes("gemma")) return 85;
-          if (lower.includes("qwen")) return 80;
-          return 10;
-        };
-        return score(b) - score(a);
-      });
-
-      const updates = { ollamaHost: baseUrl };
-      if (!currentSelected && bestModel) {
-        updates.selectedModel = bestModel;
-      }
-      await chrome.storage.local.set(updates);
-
-      return {
-        ok: true,
-        host: baseUrl,
-        models: rawModels,
-        selectedModel: currentSelected || bestModel
-      };
-    } catch (err) {
-      lastError = err;
+chrome.commands.onCommand.addListener(async (command, tab) => {
+  if (command !== "toggle-page-translate") return;
+  try {
+    const target = tab && tab.id ? tab : (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
+    if (target && target.id) {
+      await chrome.tabs.sendMessage(target.id, { type: "TOGGLE_PAGE_TRANSLATE" });
     }
-  }
-
-  const fallbackModels = (Array.isArray(customModels) ? customModels : []).map(name => ({
-    name,
-    size: 0,
-    isCustom: true
-  }));
-
-  return {
-    ok: false,
-    error: lastError ? lastError.message : "无法连接到本地模型服务",
-    models: fallbackModels,
-    selectedModel: currentSelected || (fallbackModels[0] ? fallbackModels[0].name : "")
-  };
-}
-
-// 监听来自 Popup 或 Content Script 的一次性请求
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === "FETCH_MODELS") {
-    chrome.storage.local.get(["ollamaHost", "selectedModel", "customModels"]).then(cfg => {
-      const host = message.ollamaHost || cfg.ollamaHost || DEFAULT_SETTINGS.ollamaHost;
-      const selected = message.selectedModel !== undefined ? message.selectedModel : cfg.selectedModel;
-      const customModels = Array.isArray(cfg.customModels) ? cfg.customModels : [];
-      fetchAndSelectBestModel(host, selected, customModels).then(sendResponse);
-    });
-    return true;
-  }
-
-  if (message.type === "ADD_CUSTOM_MODEL") {
-    const newModel = (message.modelName || "").trim();
-    if (!newModel) {
-      sendResponse({ ok: false, error: "模型名称不能为空" });
-      return true;
-    }
-    chrome.storage.local.get(["customModels", "ollamaHost"]).then(async cfg => {
-      const list = Array.isArray(cfg.customModels) ? cfg.customModels : [];
-      if (!list.includes(newModel)) {
-        list.unshift(newModel);
-      }
-      await chrome.storage.local.set({
-        customModels: list,
-        selectedModel: newModel
-      });
-      const result = await fetchAndSelectBestModel(cfg.ollamaHost || DEFAULT_SETTINGS.ollamaHost, newModel, list);
-      sendResponse({
-        ...result,
-        selectedModel: newModel,
-        customModels: list
-      });
-    });
-    return true;
+  } catch (_) {
+    // 浏览器内部页面等没有内容脚本的页面无法执行翻译。
   }
 });
+
+async function getTranslationSettings() {
+  const cfg = await chrome.storage.local.get([
+    "translateEngine",
+    "sourceLang",
+    "targetLang",
+    "apiBaseUrl",
+    "apiKey",
+    "apiModel"
+  ]);
+  const translateEngine = normalizeTranslateEngine(cfg.translateEngine);
+  if (cfg.translateEngine !== translateEngine) {
+    await chrome.storage.local.set({ translateEngine });
+  }
+  return { ...DEFAULT_SETTINGS, ...cfg, translateEngine, apiBaseUrl: cfg.apiBaseUrl || "" };
+}
 
 /**
  * 过滤推理模型可能输出的 <think>...</think>、<thought>...</thought> 标签及多余前缀
@@ -457,10 +276,23 @@ async function translateWithGoogle(text, sourceLang = "auto", targetLang = "zh-C
 }
 
 /**
- * 调用本地大模型流式翻译
+ * 将用户填写的云端 API 地址规范化为 OpenAI 兼容的 /chat/completions 端点
  */
-async function streamLocalModelTranslation({
-  host,
+function normalizeChatCompletionsUrl(baseUrl) {
+  let url = (baseUrl || "").trim().replace(/\/+$/, "");
+  if (!url) return "";
+  if (/\/chat\/completions$/i.test(url)) return url;
+  if (/\/v1$/i.test(url)) return `${url}/chat/completions`;
+  return `${url}/v1/chat/completions`;
+}
+
+/**
+ * 调用云端大模型（OpenAI 兼容 /v1/chat/completions）流式翻译
+ * 支持 OpenAI / DeepSeek / Moonshot / OpenRouter / Groq / xAI / Qwen 等任意 OpenAI 兼容服务商
+ */
+async function streamOpenAICompatTranslation({
+  baseUrl,
+  apiKey,
   model,
   text,
   sourceLang,
@@ -470,87 +302,36 @@ async function streamLocalModelTranslation({
   onProgress
 }) {
   const messages = buildTranslationMessages(text, sourceLang, targetLang, strictRetry);
+  const endpoint = normalizeChatCompletionsUrl(baseUrl);
+  if (!endpoint) throw new Error("云端 API 接口地址无效");
 
-  let response = null;
-  let mode = "ollama-chat";
-
-  try {
-    response = await fetch(`${host}/api/chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model,
-        stream: true,
-        options: {
-          temperature: strictRetry ? 0.35 : 0.2
-        },
-        messages
-      }),
-      signal
-    });
-  } catch (networkErr) {
-    if (networkErr.name === "AbortError") throw networkErr;
-    response = null;
+  const headers = { "Content-Type": "application/json" };
+  if (apiKey && apiKey.trim()) {
+    headers["Authorization"] = `Bearer ${apiKey.trim()}`;
   }
 
-  if (!response || !response.ok) {
-    const status = response ? response.status : 0;
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      model,
+      stream: true,
+      temperature: strictRetry ? 0.35 : 0.2,
+      messages
+    }),
+    signal
+  });
+
+  if (!response.ok) {
     let errText = "";
-    if (response) {
-      errText = await response.text().catch(() => "");
-    }
-
-    const promptFlat = `${messages[0].content}\n\n${messages[1].content}`;
-
     try {
-      const genRes = await fetch(`${host}/api/generate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model,
-          prompt: promptFlat,
-          stream: true,
-          options: { temperature: 0.2 }
-        }),
-        signal
-      });
-      if (genRes.ok) {
-        response = genRes;
-        mode = "ollama-generate";
-      }
-    } catch (e) {
-      if (e.name === "AbortError") throw e;
-    }
-
-    if (!response || !response.ok) {
-      try {
-        const v1Res = await fetch(`${host}/v1/chat/completions`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model,
-            stream: true,
-            temperature: 0.2,
-            messages
-          }),
-          signal
-        });
-        if (v1Res.ok) {
-          response = v1Res;
-          mode = "openai-sse";
-        }
-      } catch (e) {
-        if (e.name === "AbortError") throw e;
-      }
-    }
-
-    if (!response || !response.ok) {
-      throw new Error(
-        `本地模型 [${model}] 响应异常 (HTTP ${status || "连接失败"}): ${
-          errText || "请确认模型名称已在本地拉取 (ollama list) 且服务正在运行"
-        }`
-      );
-    }
+      errText = await response.text();
+    } catch (_) {}
+    throw new Error(
+      `云端 API [${model}] 响应异常 (HTTP ${response.status}): ${
+        errText.slice(0, 300) || "请检查 API Key、模型名与接口地址是否正确"
+      }`
+    );
   }
 
   const reader = response.body.getReader();
@@ -568,45 +349,19 @@ async function streamLocalModelTranslation({
 
     for (const line of lines) {
       const trimmed = line.trim();
-      if (!trimmed) continue;
-
-      if (mode === "openai-sse") {
-        if (!trimmed.startsWith("data:")) continue;
-        const dataStr = trimmed.replace(/^data:\s*/, "");
-        if (dataStr === "[DONE]") break;
-        try {
-          const parsed = JSON.parse(dataStr);
-          const delta = parsed.choices && parsed.choices[0] && parsed.choices[0].delta;
-          const piece = (delta && delta.content) || "";
-          if (piece) {
-            rawAccumulated += piece;
-            const cleanText = stripThinkingAndMeta(rawAccumulated);
-            onProgress(cleanText);
-          }
-        } catch (_) {}
-      } else {
-        try {
-          const parsed = JSON.parse(trimmed);
-          const piece =
-            (parsed.message && parsed.message.content) ||
-            parsed.response ||
-            "";
-          if (piece) {
-            rawAccumulated += piece;
-            const cleanText = stripThinkingAndMeta(rawAccumulated);
-            onProgress(cleanText);
-          }
-        } catch (_) {}
-      }
+      if (!trimmed || !trimmed.startsWith("data:")) continue;
+      const dataStr = trimmed.replace(/^data:\s*/, "");
+      if (dataStr === "[DONE]") break;
+      try {
+        const parsed = JSON.parse(dataStr);
+        const delta = parsed.choices && parsed.choices[0] && parsed.choices[0].delta;
+        const piece = (delta && delta.content) || "";
+        if (piece) {
+          rawAccumulated += piece;
+          onProgress(stripThinkingAndMeta(rawAccumulated));
+        }
+      } catch (_) {}
     }
-  }
-
-  if (buffer.trim() && mode !== "openai-sse") {
-    try {
-      const parsed = JSON.parse(buffer.trim());
-      const piece = (parsed.message && parsed.message.content) || parsed.response || "";
-      if (piece) rawAccumulated += piece;
-    } catch (_) {}
   }
 
   return stripThinkingAndMeta(rawAccumulated).trim();
@@ -659,21 +414,25 @@ chrome.runtime.onConnect.addListener(port => {
     activeControllers.set(requestId, controller);
 
     try {
-      const cfg = await chrome.storage.local.get([
-        "translateEngine",
-        "ollamaHost",
-        "selectedModel",
-        "customModels",
-        "sourceLang",
-        "targetLang"
-      ]);
-
-      const engine = msg.translateEngine || cfg.translateEngine || DEFAULT_SETTINGS.translateEngine;
+      const cfg = await getTranslationSettings();
+      const requestedEngine = msg.translateEngine !== undefined ? msg.translateEngine : cfg.translateEngine;
+      const engine = normalizeTranslateEngine(requestedEngine);
       const sourceLang = msg.sourceLang || cfg.sourceLang || DEFAULT_SETTINGS.sourceLang;
       const targetLang = msg.targetLang || cfg.targetLang || DEFAULT_SETTINGS.targetLang;
 
-      if (engine === "google") {
-        const engineLabel = "Google Translate";
+      if (engine === "api") {
+        const baseUrl = (cfg.apiBaseUrl || "").trim();
+        const apiKey = cfg.apiKey || "";
+        const apiModel = (cfg.apiModel || "").trim();
+
+        if (!apiModel) {
+          throw new Error("未配置云端模型，请在「语种与引擎」中填写服务商、API Key 与模型名");
+        }
+        if (!baseUrl) {
+          throw new Error("请在设置页填写云端 API 接口地址");
+        }
+
+        const engineLabel = apiModel;
         port.postMessage({
           type: "CHUNK",
           requestId,
@@ -681,93 +440,76 @@ chrome.runtime.onConnect.addListener(port => {
           fullText: "..."
         });
 
-        const googleResult = await translateWithGoogle(
+        let finalClean = await streamOpenAICompatTranslation({
+          baseUrl,
+          apiKey,
+          model: apiModel,
           text,
           sourceLang,
           targetLang,
-          controller.signal
-        );
-
-        port.postMessage({
-          type: "DONE",
-          requestId,
-          model: engineLabel,
-          fullText: googleResult
-        });
-        activeControllers.delete(requestId);
-        return;
-      }
-
-      let host = (cfg.ollamaHost || DEFAULT_SETTINGS.ollamaHost).trim().replace(/\/+$/, "");
-      let model = (cfg.selectedModel || "").trim();
-      const customModels = Array.isArray(cfg.customModels) ? cfg.customModels : [];
-
-      if (!model) {
-        const check = await fetchAndSelectBestModel(host, "", customModels);
-        if (!check.ok || !check.selectedModel) {
-          throw new Error("未检测到本地模型，请启动 Ollama、手动添加模型名，或切换至「Google 在线翻译」");
-        }
-        model = check.selectedModel;
-        host = check.host || host;
-      }
-
-      let finalClean = await streamLocalModelTranslation({
-        host,
-        model,
-        text,
-        sourceLang,
-        targetLang,
-        strictRetry: false,
-        signal: controller.signal,
-        onProgress: cleanText => {
-          port.postMessage({
-            type: "CHUNK",
-            requestId,
-            model,
-            fullText: cleanText
-          });
-        }
-      });
-
-      if (isUnchangedOutput(text, finalClean, targetLang)) {
-        finalClean = await streamLocalModelTranslation({
-          host,
-          model,
-          text,
-          sourceLang,
-          targetLang,
-          strictRetry: true,
+          strictRetry: false,
           signal: controller.signal,
           onProgress: cleanText => {
             port.postMessage({
               type: "CHUNK",
               requestId,
-              model,
+              model: engineLabel,
               fullText: cleanText
             });
           }
         });
 
         if (isUnchangedOutput(text, finalClean, targetLang)) {
-          try {
-            const fallbackGoogle = await translateWithGoogle(
-              text,
-              sourceLang,
-              targetLang,
-              controller.signal
-            );
-            if (fallbackGoogle) {
-              finalClean = fallbackGoogle;
+          finalClean = await streamOpenAICompatTranslation({
+            baseUrl,
+            apiKey,
+            model: apiModel,
+            text,
+            sourceLang,
+            targetLang,
+            strictRetry: true,
+            signal: controller.signal,
+            onProgress: cleanText => {
+              port.postMessage({
+                type: "CHUNK",
+                requestId,
+                model: engineLabel,
+                fullText: cleanText
+              });
             }
-          } catch (_) {}
+          });
         }
+
+        port.postMessage({
+          type: "DONE",
+          requestId,
+          model: engineLabel,
+          fullText: finalClean || text
+        });
+        activeControllers.delete(requestId);
+        return;
       }
+
+      const engineLabel = "Google Translate";
+      port.postMessage({
+        type: "CHUNK",
+        requestId,
+        model: engineLabel,
+        fullText: "..."
+      });
+
+      const googleResult = await translateWithGoogle(
+        text,
+        sourceLang,
+        targetLang,
+        controller.signal
+      );
 
       port.postMessage({
         type: "DONE",
         requestId,
-        model,
-        fullText: finalClean || text
+        model: engineLabel,
+        fullText: googleResult
       });
     } catch (err) {
       if (err.name !== "AbortError") {
